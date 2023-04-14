@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, Namespace
 
-from prime_bus_factor.version import version
+from version import version
 
 name: str = "PRIME"
 versionName: str = "PRIME Bus Factor Module"
