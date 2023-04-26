@@ -11,22 +11,24 @@ def buildBusFactor(df: DataFrame, *, bin: int, alpha: float = 0.0, stor: str = "
 
     day_key: str = "author_days_since_0"
     lastday: int = df[day_key].max() + bin
-    bins: List[Series] = list(range(0, lastday, bin))
+    bins = list(range(0, lastday, bin))
 
     df["commitBin"] = pandas.cut(df[day_key], bins=bins, include_lowest=True)
     bins = df["commitBin"].unique().tolist()
+    days_since_0 = [interval.left.astype(int) for interval in bins if interval.left > 0]
 
     match alpha:
         case x if x > 0:
-            days_since_0 = bins.left.astype(int).clip(lower=0)
 
             abs_list = lambda l: [abs(item) for item in l]
             significance = alpha * df.groupby("commitBin")["dkloc"].apply(lambda x: sum(abs_list(x.to_list())))
     
             df["author_dloc"] = df.groupby(["commitBin", "author_email"])["dkloc"].transform(lambda x: sum(abs_list(x.tolist())))
 
+            print(df)
+
             df["bf"] = (df.groupby(["commitBin", "author_email"])["author_dloc"].transform(lambda x: x.gt(significance).sum()).groupby("commitBin").sum())
-            
+
             data = [{"days_since_0": d, stor: bf} for d, bf in zip(days_since_0, df.groupby("commitBin")["bf"].max())]
         case _:
             data = [{"days_since_0": d, stor: len(authors)} for d, authors in zip(days_since_0, df.groupby("commitBin")["author_email"].nunique())]
@@ -81,7 +83,7 @@ def main() -> None:
 
     match (args.bin, args.alpha):
         case (x, y) if x < 1:
-            print(f"Bin argument must be an integer greater than 0: {bin_value}")
+            print(f"Bin argument must be an integer greater than 0: {args.bin}")
             quit(1)
         case (x, y) if y > 1 or y < 0:
             print("Invalid alpha value. Must be alpha <= 1 and alpha >= 0")
@@ -91,10 +93,10 @@ def main() -> None:
 
     df: DataFrame = pandas.read_json(args.input).T
     bf: DataFrame = buildBusFactor(df, bin=args.bin, alpha=args.alpha, stor="busFactor")
-    cd: DataFrame = buildBusFactor(df, bin=args.bin, alpha=0, stor="developerCount")
+    #cd: DataFrame = buildBusFactor(df, bin=args.bin, alpha=0, stor="developerCount")
 
-    cdColumn = cd["developerCount"]
-    bf.join(cdColumn).to_json(args.output, indent=4)
+    #cdColumn = cd["developerCount"]
+    #bf.join(cdColumn).to_json(args.output, indent=4)
 
 
 if __name__ == "__main__":
